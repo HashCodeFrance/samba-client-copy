@@ -1,8 +1,8 @@
 using SMBLibrary.Client;
 
-public class SambaFileStore
+public class SambaConnection
 {
-    public SambaFileStore(SMB2Client client, ISMBFileStore fileStore, string server, string tree, string domain)
+    public SambaConnection(SMB2Client client, ISMBFileStore fileStore, string server, string tree, string domain)
     {
         Client = client;
         FileStore = fileStore;

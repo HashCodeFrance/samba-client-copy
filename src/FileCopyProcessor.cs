@@ -5,20 +5,20 @@ using SMBLibrary.Client;
 public class FileCopyProcessor
 {
     private const int MaxRetries = 3;
-    private readonly SambaFileStore _sambaFileStore;
+    private readonly SambaConnection _sambaConnection;
 
-    public FileCopyProcessor(SambaFileStore fileStore)
+    public FileCopyProcessor(SambaConnection sambaConnection)
     {
-        _sambaFileStore = fileStore;
+        _sambaConnection = sambaConnection;
     }
 
     public void CopyFromFolderToFolder(string sourcePath, string destPath)
     {
         bool isDirectory = Directory.Exists(sourcePath);
-        var client = _sambaFileStore.Client;
-        var fileStore = _sambaFileStore.FileStore;
-        var server = _sambaFileStore.Server;
-        var tree = _sambaFileStore.Tree;
+        var client = _sambaConnection.Client;
+        var fileStore = _sambaConnection.FileStore;
+        var server = _sambaConnection.Server;
+        var tree = _sambaConnection.Tree;
 
         Console.WriteLine($"DEBUG - SourceIsDirectory:{isDirectory} MaxReadSize:{client.MaxReadSize}, MaxWriteSize:{client.MaxWriteSize}, MaxTransactSize:{client.MaxTransactSize},");
         Console.WriteLine($@"Copying files from {sourcePath} to \\{server}\{tree}\{destPath}");
@@ -66,7 +66,7 @@ public class FileCopyProcessor
             currentDirectory += @$"{part}\";
 
             Debug.WriteLine($"Creating {currentDirectory} if it does not exist.");
-            var status = client.SambaCreateDirectory(fileStore, currentDirectory.TrimEnd('\\'), out var fileHandle);
+            var status = fileStore.SambaCreateDirectory(currentDirectory.TrimEnd('\\'), out var fileHandle);
 
             if (status == NTStatus.STATUS_SUCCESS)
             {
@@ -110,7 +110,7 @@ public class FileCopyProcessor
     {
         Console.WriteLine($"Creating directory {directory}");
 
-        var status = client.SambaCreateDirectory(fileStore, directory, out var fileHandle);
+        var status = fileStore.SambaCreateDirectory(directory, out var fileHandle);
 
         if (status != NTStatus.STATUS_SUCCESS)
         {
@@ -143,7 +143,7 @@ public class FileCopyProcessor
 
         Console.WriteLine($"Creating file {dest}");
 
-        var status = client.SambaCreateFile(fileStore, dest, out var fileHandle);
+        var status = fileStore.SambaCreateFile(dest, out var fileHandle);
 
         if (status != NTStatus.STATUS_SUCCESS)
         {

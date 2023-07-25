@@ -1,10 +1,10 @@
 # samba-client-copy
 
-This program allows to copy a folder or a file to a samba share.
+This simple program allows to copy a folder or a file to a samba share.
 
-It uses .NET 7.0 and the SMBLibrary portable library.
+It uses .NET 7.0 and the [SMBLibrary](https://github.com/TalAloni/SMBLibrary) portable library.
 
-Tester under Ubuntu 20.04
+Tested under Ubuntu 20.04
 
 ## Build
 
@@ -24,7 +24,7 @@ ln -s /azp/bin/SambaFileCopy /bin/smbcp
 
 ## Usage
 
-To copy files inside /tmp/files to \\\\SERVER\\SHARE\TempOutput\2023
+To copy files inside `/tmp/files` to `\\SERVER\SHARE\TempOutput\2023` :
 
 ```sh
 SambaFileCopy --source /tmp/files/ --server 'SERVER' --tree 'SHARE' --destination 'TempOutput/2023' --username 'smbuser' --password 'smbpwd' --domain 'MYDOMAIN'

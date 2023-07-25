@@ -24,7 +24,7 @@ Parser.Default.ParseArguments<Options>(args).WithParsed<Options>(o =>
 });
 
 
-SambaFileStore? GetSambaFileStore(string server, string tree, string domain, string? username, string? password)
+SambaConnection? GetSambaFileStore(string server, string tree, string domain, string? username, string? password)
 {
     Console.WriteLine($"Connecting to Server={server} Tree={tree}...");
 
@@ -57,5 +57,5 @@ SambaFileStore? GetSambaFileStore(string server, string tree, string domain, str
         return null;
     }
 
-    return new SambaFileStore(client, fileStore, server, tree, domain);
+    return new SambaConnection(client, fileStore, server, tree, domain);
 }
