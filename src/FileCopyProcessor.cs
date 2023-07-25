@@ -10,20 +10,25 @@ public class FileCopyProcessor
     public FileCopyProcessor(SambaConnection sambaConnection)
     {
         _sambaConnection = sambaConnection;
+
+        if (_sambaConnection.Client == null || _sambaConnection.FileStore == null)
+        {
+            throw new InvalidOperationException("Samba initialization failure.");
+        }
     }
 
     public void CopyFromFolderToFolder(string sourcePath, string destPath)
     {
-        bool isDirectory = Directory.Exists(sourcePath);
-        var client = _sambaConnection.Client;
-        var fileStore = _sambaConnection.FileStore;
+        SMB2Client client = _sambaConnection.Client!;
+        ISMBFileStore fileStore = _sambaConnection.FileStore!;
         var server = _sambaConnection.Server;
         var tree = _sambaConnection.Tree;
 
+        bool isDirectory = Directory.Exists(sourcePath);
         Console.WriteLine($"DEBUG - SourceIsDirectory:{isDirectory} MaxReadSize:{client.MaxReadSize}, MaxWriteSize:{client.MaxWriteSize}, MaxTransactSize:{client.MaxTransactSize},");
         Console.WriteLine($@"Copying files from {sourcePath} to \\{server}\{tree}\{destPath}");
 
-        EnsureDestPathExists(client, fileStore, destPath);
+        EnsureDestPathExists(destPath);
 
         // single file mode
         if (isDirectory == false)
@@ -31,7 +36,7 @@ public class FileCopyProcessor
             try
             {
                 var fileName = sourcePath;
-                CopyFile(client, fileStore, fileName, destPath);
+                CopyFile(fileName, destPath);
             }
             finally
             {
@@ -44,7 +49,7 @@ public class FileCopyProcessor
         {
             try
             {
-                CopyFilesRecurse(client, fileStore, sourcePath, destPath);
+                CopyFilesRecurse(sourcePath, destPath);
             }
             finally
             {
@@ -55,7 +60,7 @@ public class FileCopyProcessor
         }
     }
 
-    private void EnsureDestPathExists(SMB2Client client, ISMBFileStore fileStore, string destPath)
+    private void EnsureDestPathExists(string destPath)
     {
         var parts = destPath.Split(new[] { "/", @"\" }, StringSplitOptions.RemoveEmptyEntries);
         var currentDirectory = string.Empty;
@@ -66,12 +71,12 @@ public class FileCopyProcessor
             currentDirectory += @$"{part}\";
 
             Debug.WriteLine($"Creating {currentDirectory} if it does not exist.");
-            var status = fileStore.SambaCreateDirectory(currentDirectory.TrimEnd('\\'), out var fileHandle);
+            var status = _sambaConnection.FileStore.SambaCreateDirectory(currentDirectory.TrimEnd('\\'), out var fileHandle);
 
             if (status == NTStatus.STATUS_SUCCESS)
             {
                 Console.WriteLine($"Destination directory {currentDirectory} created.");
-                var closeStatus = fileStore.CloseFile(fileHandle);
+                var closeStatus = _sambaConnection.FileStore.CloseFile(fileHandle);
 
                 if (closeStatus != NTStatus.STATUS_SUCCESS)
                 {
@@ -86,14 +91,14 @@ public class FileCopyProcessor
         }
     }
 
-    private void CopyFilesRecurse(SMB2Client client, ISMBFileStore fileStore, string sourcePath, string destPath)
+    private void CopyFilesRecurse(string sourcePath, string destPath)
     {
         var directory = new DirectoryInfo(sourcePath);
         var newFiles = directory.EnumerateFiles("*", SearchOption.TopDirectoryOnly);
 
         foreach (var newFile in newFiles)
         {
-            CopyFile(client, fileStore, newFile.FullName, destPath);
+            CopyFile(newFile.FullName, destPath);
         }
 
         var newDirectories = directory.GetDirectories("*", SearchOption.TopDirectoryOnly);
@@ -101,16 +106,16 @@ public class FileCopyProcessor
         foreach (var newDirectory in newDirectories)
         {
             var newDestinationDirectory = @$"{destPath}/{newDirectory.Name}";
-            CreateDirectory(client, fileStore, newDestinationDirectory);
-            CopyFilesRecurse(client, fileStore, newDirectory.FullName, newDestinationDirectory);
+            CreateDirectory(newDestinationDirectory);
+            CopyFilesRecurse(newDirectory.FullName, newDestinationDirectory);
         }
     }
 
-    private void CreateDirectory(SMB2Client client, ISMBFileStore fileStore, string directory)
+    private void CreateDirectory(string directory)
     {
         Console.WriteLine($"Creating directory {directory}");
 
-        var status = fileStore.SambaCreateDirectory(directory, out var fileHandle);
+        var status = _sambaConnection.FileStore.SambaCreateDirectory(directory, out var fileHandle);
 
         if (status != NTStatus.STATUS_SUCCESS)
         {
@@ -120,12 +125,7 @@ public class FileCopyProcessor
 
         Console.WriteLine($"Directory {directory} created.");
 
-        if (fileStore == null)
-        {
-            return;
-        }
-
-        var closeStatus = fileStore.CloseFile(fileHandle);
+        var closeStatus = _sambaConnection.FileStore.CloseFile(fileHandle);
 
         if (closeStatus != NTStatus.STATUS_SUCCESS)
         {
@@ -136,14 +136,14 @@ public class FileCopyProcessor
 
     private static bool IsCurrentDirectoryPath(string path) => string.IsNullOrEmpty(path) || path == "." || path == "./" || path == @".\";
 
-    private void CopyFile(SMB2Client client, ISMBFileStore fileStore, string fileName, string destPath)
+    private void CopyFile(string fileName, string destPath)
     {
         var destFileName = Path.GetFileName(fileName);
         var dest = IsCurrentDirectoryPath(destPath) == false ? @$"{destPath}\{destFileName}" : destFileName;
 
         Console.WriteLine($"Creating file {dest}");
 
-        var status = fileStore.SambaCreateFile(dest, out var fileHandle);
+        var status = _sambaConnection.FileStore.SambaCreateFile(dest, out var fileHandle);
 
         if (status != NTStatus.STATUS_SUCCESS)
         {
@@ -167,10 +167,10 @@ public class FileCopyProcessor
 
             while (fs.Position < fs.Length)
             {
-                byte[] buffer = new byte[(int)client.MaxWriteSize];
+                byte[] buffer = new byte[(int)_sambaConnection.Client.MaxWriteSize];
                 int bytesRead = fs.Read(buffer, 0, buffer.Length);
 
-                if (bytesRead < (int)client.MaxWriteSize)
+                if (bytesRead < (int)_sambaConnection.Client.MaxWriteSize)
                 {
                     Array.Resize<byte>(ref buffer, bytesRead);
                 }
@@ -179,7 +179,7 @@ public class FileCopyProcessor
 
                 for (int retry = 0; retry < MaxRetries; retry++)
                 {
-                    status = fileStore.WriteFile(out numberOfBytesWritten, fileHandle, writeOffset, buffer);
+                    status = _sambaConnection.FileStore.WriteFile(out numberOfBytesWritten, fileHandle, writeOffset, buffer);
 
                     if (status == NTStatus.STATUS_SUCCESS)
                     {
@@ -205,7 +205,7 @@ public class FileCopyProcessor
         {
             try
             {
-                var closeStatus = fileStore.CloseFile(fileHandle);
+                var closeStatus = _sambaConnection.FileStore.CloseFile(fileHandle);
 
                 if (closeStatus != NTStatus.STATUS_SUCCESS)
                 {
