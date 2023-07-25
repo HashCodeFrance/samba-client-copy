@@ -23,6 +23,6 @@ jobs:
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
-      run: dotnet build --no-restore --configuration Release --runtime ubuntu.20.04-x64 --no-self-contained -p:PublishSingleFile=true 
+      run: dotnet build --no-restore --configuration Release --no-self-contained -p:PublishSingleFile=true 
     - name: Test
       run: dotnet test --no-build --verbosity normal
