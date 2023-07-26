@@ -22,7 +22,13 @@ You could also make a symlink like this
 ln -s /azp/bin/SambaFileCopy /bin/smbcp
 ```
 
-## Usage
+## Run
+
+### Usage
+
+
+
+### Example
 
 To copy files inside `/tmp/files` to `\\SERVER\SHARE\TempOutput\2023` :
 
@@ -32,6 +38,19 @@ SambaFileCopy --source /tmp/files/ --server 'SERVER' --tree 'SHARE' --destinatio
 
 ## Notes
 
-When using pathes for the destination (samba) share, it only accepts blackslashes, not slashes.
+### Not enough credits Exception
+
+Sometimes this exception can be thrown :
+
+    Unhandled exception. System.Exception: Not enough credits
+    at SMBLibrary.Client.SMB2Client.TrySendCommand(SMB2Command request, Boolean encryptData)
+
+There is a credit mechanism with the Samba protocol, it whill throttle the number of connections and data transferred by a client.
+
+When transferring a lot of files, the only way I found to overcome this problem is to add a sleep between the write operations.
+
+### Path format
+
+When using pathes for the destination (samba) share, it only accepts blackslashes, not slashes. Thus inside the code, slashes are replaced with backslashes.
 
 ***Use this program at your own risk.***

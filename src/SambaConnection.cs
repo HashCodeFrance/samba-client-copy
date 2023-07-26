@@ -26,6 +26,8 @@ public class SambaConnection
     public bool Reconnect()
     {
         Console.WriteLine("Reconnecting...");
+        Thread.Sleep(10000);
+
 
         try
         {
@@ -35,6 +37,7 @@ public class SambaConnection
         catch { }
 
         Console.WriteLine($"Connecting to Server={Server} Tree={Tree}...");
+        Thread.Sleep(10000);
         var isConnected = Client.Connect(Server, SMBTransportType.DirectTCPTransport);
 
         if (!isConnected)

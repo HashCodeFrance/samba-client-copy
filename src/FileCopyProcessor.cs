@@ -184,7 +184,7 @@ public class FileCopyProcessor
             if (success)
             {
                 sw.Stop();
-                Console.WriteLine($"File {dest} successfully transferred ({writeOffset / 1024} Kb - {sw.Elapsed.TotalMilliseconds} ms.)");
+                Console.WriteLine($"File {dest} successfully transferred ({writeOffset / 1024} Kb - {(int)sw.Elapsed.TotalMilliseconds} ms)");
             }
             else
             {
@@ -254,21 +254,20 @@ public class FileCopyProcessor
                 // Unhandled exception. System.Exception: Not enough credits
                 // at SMBLibrary.Client.SMB2Client.TrySendCommand(SMB2Command request, Boolean encryptData)
                 status = _sambaConnection.FileStore.WriteFile(out numberOfBytesWritten, fileHandle, writeOffset, buffer);
+
+                if (status == NTStatus.STATUS_SUCCESS)
+                {
+                    success = true;
+                    break;
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Exception caught: " + ex.Message);
             }
 
-            Thread.Sleep(2000);
-
-            if (status == NTStatus.STATUS_SUCCESS)
-            {
-                success = true;
-                break;
-            }
-
             Console.Error.WriteLine($"Failed to write to file {dest}: Status={status} (retry {retry} / {MaxRetries})");
+            _sambaConnection.Reconnect();
         }
 
         return (numberOfBytesWritten, success);
