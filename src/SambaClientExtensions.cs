@@ -14,14 +14,14 @@ public static class SambaFileStoreExtensions
             AccessMask.GENERIC_WRITE | AccessMask.SYNCHRONIZE,
             SMBLibrary.FileAttributes.Normal,
             ShareAccess.None,
-            CreateDisposition.FILE_OVERWRITE_IF,
+            skipExistingFiles ? CreateDisposition.FILE_CREATE : CreateDisposition.FILE_OVERWRITE_IF,
             CreateOptions.FILE_NON_DIRECTORY_FILE,// | CreateOptions.FILE_SYNCHRONOUS_IO_ALERT,
             null);
 
         return status;
     }
 
-    public static NTStatus SambaCreateDirectory(this ISMBFileStore fileStore, string directory, out object? fileHandle, bool skipExistingFiles)
+    public static NTStatus SambaCreateDirectory(this ISMBFileStore fileStore, string directory, out object? fileHandle)
     {
         directory = directory.Replace("/", @"\");
 
