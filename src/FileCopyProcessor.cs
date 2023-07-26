@@ -1,8 +1,6 @@
 using System.Diagnostics;
-using System.Xml;
 using SMBLibrary;
 using SMBLibrary.Client;
-using SMBLibrary.SMB2;
 
 public class FileCopyProcessor
 {
@@ -159,36 +157,11 @@ public class FileCopyProcessor
             return;
         }
 
-        int writeOffset = 0;
         var sw = Stopwatch.StartNew();
 
         try
         {
-            bool success = false;
-            using var fs = File.OpenRead(fileName);
-            Debug.WriteLine($"File {fileName} opened for reading.");
-
-            while (fs.Position < fs.Length)
-            {
-                byte[] buffer = new byte[(int)_sambaConnection.Client.MaxWriteSize];
-                int bytesRead = fs.Read(buffer, 0, buffer.Length);
-
-                if (bytesRead < (int)_sambaConnection.Client.MaxWriteSize)
-                {
-                    Array.Resize<byte>(ref buffer, bytesRead);
-                }
-
-                (int numberOfBytesWritten, var writeSuccess) = TryWriteFile(dest, fileHandle, writeOffset, buffer);
-
-                if (writeSuccess == false)
-                {
-                    success = false;
-                    break;
-                }
-
-                Debug.WriteLine($"Written {numberOfBytesWritten} bytes to file {dest}");
-                writeOffset += bytesRead;
-            }
+            var (writeOffset, success) = CopyFile(fileName, dest, fileHandle);
 
             if (success)
             {
@@ -213,6 +186,38 @@ public class FileCopyProcessor
             }
             catch { }
         }
+    }
+
+    private (int, bool) CopyFile(string fileName, string dest, object? fileHandle)
+    {
+        int writeOffset = 0;
+        var success = false;
+        using var fs = File.OpenRead(fileName);
+        Debug.WriteLine($"File {fileName} opened for reading.");
+
+        while (fs.Position < fs.Length)
+        {
+            var buffer = new byte[(int)_sambaConnection.Client.MaxWriteSize];
+            int bytesRead = fs.Read(buffer, 0, buffer.Length);
+
+            if (bytesRead < (int)_sambaConnection.Client.MaxWriteSize)
+            {
+                Array.Resize(ref buffer, bytesRead);
+            }
+
+            (int numberOfBytesWritten, var writeSuccess) = TryWriteFile(dest, fileHandle, writeOffset, buffer);
+
+            if (writeSuccess == false)
+            {
+                success = false;
+                break;
+            }
+
+            Debug.WriteLine($"Written {numberOfBytesWritten} bytes to file {dest}");
+            writeOffset += bytesRead;
+        }
+
+        return (writeOffset, success);
     }
 
     private (int, bool) TryWriteFile(string dest, object? fileHandle, int writeOffset, byte[] buffer)
