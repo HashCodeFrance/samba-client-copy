@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using SMBLibrary;
 using SMBLibrary.Client;
+using SMBLibrary.SMB2;
 
 public class FileCopyProcessor
 {
@@ -175,22 +176,7 @@ public class FileCopyProcessor
                     Array.Resize<byte>(ref buffer, bytesRead);
                 }
 
-                int numberOfBytesWritten = 0;
-
-                for (int retry = 0; retry < MaxRetries; retry++)
-                {
-                    status = _sambaConnection.FileStore.WriteFile(out numberOfBytesWritten, fileHandle, writeOffset, buffer);
-
-                    if (status == NTStatus.STATUS_SUCCESS)
-                    {
-                        success = true;
-                        break;
-                    }
-
-                    Console.Error.WriteLine($"Failed to write to file {dest}: Status={status} (retry {retry} / {MaxRetries})");
-                    System.Threading.Thread.Sleep(1000);
-                }
-
+                int numberOfBytesWritten = TryWriteFile(dest, ref status, fileHandle, writeOffset, ref success, buffer);
                 Debug.WriteLine($"Written {numberOfBytesWritten} bytes to file {dest}");
                 writeOffset += bytesRead;
             }
@@ -214,5 +200,36 @@ public class FileCopyProcessor
             }
             catch { }
         }
+    }
+
+    private int TryWriteFile(string dest, ref NTStatus status, object? fileHandle, int writeOffset, ref bool success, byte[] buffer)
+    {
+        int numberOfBytesWritten = 0;
+
+        for (int retry = 1; retry <= MaxRetries; retry++)
+        {
+            try
+            {
+                // trying to fix exception:
+                // Unhandled exception. System.Exception: Not enough credits
+                // at SMBLibrary.Client.SMB2Client.TrySendCommand(SMB2Command request, Boolean encryptData)
+                status = _sambaConnection.FileStore.WriteFile(out numberOfBytesWritten, fileHandle, writeOffset, buffer);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Exception caught: " + ex.Message);
+            }
+
+            if (status == NTStatus.STATUS_SUCCESS)
+            {
+                success = true;
+                break;
+            }
+
+            Console.Error.WriteLine($"Failed to write to file {dest}: Status={status} (retry {retry} / {MaxRetries})");
+            Thread.Sleep(1000);
+        }
+
+        return numberOfBytesWritten;
     }
 }
