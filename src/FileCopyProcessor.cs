@@ -141,13 +141,16 @@ public class FileCopyProcessor
         var destFileName = Path.GetFileName(fileName);
         var dest = IsCurrentDirectoryPath(destPath) == false ? @$"{destPath}\{destFileName}" : destFileName;
 
+        _sambaConnection.Reconnect();
+
+
         Console.WriteLine($"Creating file {dest}");
 
         NTStatus status;
         object? fileHandle = null;
 
-        try
-        {
+        //try
+        //{
             status = _sambaConnection.FileStore.SambaCreateFile(dest, out fileHandle);
 
             if (status != NTStatus.STATUS_SUCCESS)
@@ -155,18 +158,18 @@ public class FileCopyProcessor
                 Console.Error.WriteLine($"Could not create file {dest}: Status={status}");
                 return;
             }
-        }
-        catch (Exception ex) when (ex.Message == "Not enough credits")
-        {
-            _sambaConnection.Reconnect();
-            status = _sambaConnection.FileStore.SambaCreateFile(dest, out fileHandle);
+        //}
+        //catch (Exception ex) when (ex.Message == "Not enough credits")
+        //{
+        //    _sambaConnection.Reconnect();
+        //    status = _sambaConnection.FileStore.SambaCreateFile(dest, out fileHandle);
 
-            if (status != NTStatus.STATUS_SUCCESS)
-            {
-                Console.Error.WriteLine($"Could not create file {dest}: Status={status} (second try)");
-                return;
-            }
-        }
+        //    if (status != NTStatus.STATUS_SUCCESS)
+        //    {
+        //        Console.Error.WriteLine($"Could not create file {dest}: Status={status} (second try)");
+        //        return;
+        //    }
+        //}
 
         if (fileHandle == null)
         {

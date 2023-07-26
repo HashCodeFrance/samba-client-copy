@@ -6,7 +6,7 @@ Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
 
     if (Directory.Exists(sourcePath) == false && File.Exists(sourcePath) == false)
     {
-        Console.Error.WriteLine("Path {source} does not exist.");
+        Console.Error.WriteLine($"Path {sourcePath} does not exist.");
         return;
     }
 
