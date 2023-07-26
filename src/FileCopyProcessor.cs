@@ -99,6 +99,7 @@ public class FileCopyProcessor
         foreach (var newFile in newFiles)
         {
             CopyFile(newFile.FullName, destPath);
+            Thread.Sleep(1000);
         }
 
         var newDirectories = directory.GetDirectories("*", SearchOption.TopDirectoryOnly);
