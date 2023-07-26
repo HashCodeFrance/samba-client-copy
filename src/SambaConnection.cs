@@ -27,8 +27,12 @@ public class SambaConnection
     {
         Console.WriteLine("Reconnecting...");
 
-        Client.Logoff();
-        Client.Disconnect();
+        try
+        {
+            Client.Logoff();
+            Client.Disconnect();
+        }
+        catch { }
 
         Console.WriteLine($"Connecting to Server={Server} Tree={Tree}...");
         var isConnected = Client.Connect(Server, SMBTransportType.DirectTCPTransport);
