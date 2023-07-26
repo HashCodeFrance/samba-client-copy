@@ -25,6 +25,8 @@ public class SambaConnection
 
     public bool Reconnect()
     {
+        Console.WriteLine("Reconnecting...");
+
         Client.Logoff();
         Client.Disconnect();
 

@@ -143,12 +143,29 @@ public class FileCopyProcessor
 
         Console.WriteLine($"Creating file {dest}");
 
-        var status = _sambaConnection.FileStore.SambaCreateFile(dest, out var fileHandle);
+        NTStatus status;
+        object? fileHandle = null;
 
-        if (status != NTStatus.STATUS_SUCCESS)
+        try
         {
-            Console.Error.WriteLine($"Could not create file {dest}: Status={status}");
-            return;
+            status = _sambaConnection.FileStore.SambaCreateFile(dest, out fileHandle);
+
+            if (status != NTStatus.STATUS_SUCCESS)
+            {
+                Console.Error.WriteLine($"Could not create file {dest}: Status={status}");
+                return;
+            }
+        }
+        catch (Exception ex) when (ex.Message == "Not enough credits")
+        {
+            _sambaConnection.Reconnect();
+            status = _sambaConnection.FileStore.SambaCreateFile(dest, out fileHandle);
+
+            if (status != NTStatus.STATUS_SUCCESS)
+            {
+                Console.Error.WriteLine($"Could not create file {dest}: Status={status} (second try)");
+                return;
+            }
         }
 
         if (fileHandle == null)
