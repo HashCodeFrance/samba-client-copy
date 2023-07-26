@@ -60,9 +60,13 @@ public class FileCopyProcessor
             }
             finally
             {
-                fileStore?.Disconnect();
-                client?.Logoff();
-                client?.Disconnect();
+                try
+                {
+                    fileStore?.Disconnect();
+                    client?.Logoff();
+                    client?.Disconnect();
+                }
+                catch { }
             }
         }
     }
@@ -121,17 +125,21 @@ public class FileCopyProcessor
 
     private void CreateDirectory(string directory)
     {
-        Console.WriteLine($"Creating directory {directory}");
-
         var status = _sambaConnection.FileStore.SambaCreateDirectory(directory, out var fileHandle);
 
-        if (status != NTStatus.STATUS_SUCCESS)
+        if (status == NTStatus.STATUS_OBJECT_NAME_COLLISION)
         {
-            Console.Error.WriteLine($"Could not create directory {directory}: Status={status}");
+            Console.WriteLine($"Creating directory {directory}: already exists");
             return;
         }
 
-        Console.WriteLine($"Directory {directory} created.");
+        if (status != NTStatus.STATUS_SUCCESS)
+        {
+            Console.Error.WriteLine($"Creating directory {directory}: Failure: Status={status}");
+            return;
+        }
+
+        Console.WriteLine($"Creating directory {directory}: Success.");
 
         var closeStatus = _sambaConnection.FileStore.CloseFile(fileHandle);
 
@@ -174,12 +182,13 @@ public class FileCopyProcessor
 
             if (_sambaConnection.SkipExistingFiles == true && status == NTStatus.STATUS_OBJECT_NAME_COLLISION)
             {
+                Console.WriteLine("  Skipped (already exists)");
                 return true;
             }
 
             if (status != NTStatus.STATUS_SUCCESS)
             {
-                Console.Error.WriteLine($"Could not create file {dest}: Status={status}");
+                Console.Error.WriteLine($"  Could not create file {dest}: Status={status}");
                 return false;
             }
         }
@@ -190,7 +199,7 @@ public class FileCopyProcessor
 
         if (fileHandle == null)
         {
-            Console.Error.WriteLine($"Could not create file {dest}: file handle is null.");
+            Console.Error.WriteLine($"  Could not create file {dest}: file handle is null.");
             return false;
         }
 
@@ -203,11 +212,11 @@ public class FileCopyProcessor
             if (success)
             {
                 sw.Stop();
-                Console.WriteLine($"File {dest} successfully transferred ({writeOffset / 1024}Kb - {(int)sw.Elapsed.TotalMilliseconds}ms)");
+                Console.WriteLine($"  File {dest} successfully transferred ({writeOffset / 1024}Kb - {(int)sw.Elapsed.TotalMilliseconds}ms)");
             }
             else
             {
-                Console.Error.WriteLine($"Could not write to file {dest} ");
+                Console.Error.WriteLine($"  Could not write to file {dest} ");
                 return false;
             }
         }
@@ -223,7 +232,7 @@ public class FileCopyProcessor
 
                 if (closeStatus != NTStatus.STATUS_SUCCESS)
                 {
-                    Console.Error.WriteLine($"Failed to close file {dest}: Status={closeStatus}");
+                    Console.Error.WriteLine($"  Failed to close file {dest}: Status={closeStatus}");
                 }
             }
             catch { }
