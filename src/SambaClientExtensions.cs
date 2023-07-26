@@ -3,7 +3,7 @@ using SMBLibrary.Client;
 
 public static class SambaFileStoreExtensions
 {
-    public static NTStatus SambaCreateFile(this ISMBFileStore fileStore, string dest, out object? fileHandle)
+    public static NTStatus SambaCreateFile(this ISMBFileStore fileStore, string dest, out object? fileHandle, bool skipExistingFiles)
     {
         dest = dest.Replace("/", @"\");
 
@@ -21,7 +21,7 @@ public static class SambaFileStoreExtensions
         return status;
     }
 
-    public static NTStatus SambaCreateDirectory(this ISMBFileStore fileStore, string directory, out object? fileHandle)
+    public static NTStatus SambaCreateDirectory(this ISMBFileStore fileStore, string directory, out object? fileHandle, bool skipExistingFiles)
     {
         directory = directory.Replace("/", @"\");
 

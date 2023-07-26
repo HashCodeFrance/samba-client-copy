@@ -7,7 +7,7 @@ public class SambaConnection
     private readonly string? _username;
     private readonly string? _password;
 
-    public SambaConnection(SMB2Client client, ISMBFileStore fileStore, string server, string tree, string domain, string? username, string? password)
+    public SambaConnection(SMB2Client client, ISMBFileStore fileStore, string server, string tree, string domain, string? username, string? password, bool skipExistingFiles)
     {
         Client = client;
         FileStore = fileStore;
@@ -16,20 +16,22 @@ public class SambaConnection
         Domain = domain;
         _username = username;
         _password = password;
+        SkipExistingFiles = skipExistingFiles;
     }
 
     public ISMBFileStore FileStore { get; private set; }
-    public SMB2Client Client { get; }
+    public SMB2Client Client { get; private set; }
     public string Server { get; }
     public string Tree { get; }
     public string Domain { get; }
+    public bool SkipExistingFiles { get; }
 
     public bool Reconnect()
     {        
         for (int retry = 1; retry <= MaxReconnectRetries;  retry++)
         {
-            Console.WriteLine($"Reconnecting (retry {retry} / {MaxReconnectRetries} ...");
-            Thread.Sleep(10000);
+            Console.WriteLine($"Reconnecting (retry {retry} / {MaxReconnectRetries})...");
+            Thread.Sleep(20000);
 
             try
             {
@@ -47,7 +49,7 @@ public class SambaConnection
         return false;
     }
 
-    public static SambaConnection? Create(string server, string tree, string domain, string? username, string? password)
+    public static SambaConnection? Create(string server, string tree, string domain, string? username, string? password, bool skipExistingFiles)
     {
         var client = new SMB2Client();
 
@@ -80,7 +82,7 @@ public class SambaConnection
             return null;
         }
 
-        return new SambaConnection(client, fileStore, server, tree, domain, username, password);
+        return new SambaConnection(client, fileStore, server, tree, domain, username, password, skipExistingFiles);
     }
 
     private bool ReconnectInternal()
@@ -92,8 +94,10 @@ public class SambaConnection
         }
         catch { }
 
+
+        Client = new SMB2Client();
+
         Console.WriteLine($"Connecting to Server={Server} Tree={Tree}...");
-        Thread.Sleep(10000);
         var isConnected = Client.Connect(Server, SMBTransportType.DirectTCPTransport);
 
         if (!isConnected)

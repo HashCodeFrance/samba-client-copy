@@ -10,7 +10,7 @@ Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
         return;
     }
 
-    var sambaConnection = SambaConnection.Create(o.Server!, o.Tree!, o.Domain!, o.Username, o.Password);
+    var sambaConnection = SambaConnection.Create(o.Server!, o.Tree!, o.Domain!, o.Username, o.Password, o.SkipExistingFiles);
 
     if (sambaConnection == null )
     {

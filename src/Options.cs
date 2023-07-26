@@ -5,7 +5,7 @@ public class Options
     [Option('s', "source", Required = true, HelpText = "Source path")]
     public string? Source { get; set; }
 
-    [Option('s', "server", Required = true, HelpText = "Destination samba server")]
+    [Option('r', "server", Required = true, HelpText = "Destination samba server")]
     public string? Server { get; set; }
 
     [Option('t', "tree", Required = true, HelpText = "Destination samba tree")]
@@ -22,4 +22,7 @@ public class Options
 
     [Option('p', "password", Required = false, HelpText = "Password")]
     public string? Password { get; set; }
+
+    [Option('k', "skip-existing", Required = false, HelpText = "Skip the files that already exist on the server")]
+    public bool SkipExistingFiles { get; set; }
 }

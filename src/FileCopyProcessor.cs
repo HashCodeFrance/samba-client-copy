@@ -6,6 +6,12 @@ public class FileCopyProcessor
 {
     private const int MaxWriteFileRetries = 1;
     private const int MaxCopyFileRetries = 3;
+
+    /// <summary>
+    /// Duration in ms waited between two file copy operations.
+    /// </summary>
+    private const int WaitValueBetweenCopy = 200;
+
     private readonly SambaConnection _sambaConnection;
 
     public FileCopyProcessor(SambaConnection sambaConnection)
@@ -100,7 +106,7 @@ public class FileCopyProcessor
         foreach (var newFile in newFiles)
         {
             CopyFile(newFile.FullName, destPath);
-            Thread.Sleep(1000);
+            Thread.Sleep(WaitValueBetweenCopy);
         }
 
         var newDirectories = directory.GetDirectories("*", SearchOption.TopDirectoryOnly);
@@ -149,7 +155,10 @@ public class FileCopyProcessor
             {
                 break;
             }
-            _sambaConnection.Reconnect();
+            if (_sambaConnection.Reconnect() == false)
+            {
+                break;
+            }
         }
 
     }
@@ -161,7 +170,12 @@ public class FileCopyProcessor
 
         try
         {
-            status = _sambaConnection.FileStore.SambaCreateFile(dest, out fileHandle);
+            status = _sambaConnection.FileStore.SambaCreateFile(dest, out fileHandle, _sambaConnection.SkipExistingFiles);
+
+            if (_sambaConnection.SkipExistingFiles == true && status == NTStatus.STATUS_OBJECT_NAME_COLLISION)
+            {
+                return true;
+            }
 
             if (status != NTStatus.STATUS_SUCCESS)
             {
