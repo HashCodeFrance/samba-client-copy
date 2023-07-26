@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Xml;
 using SMBLibrary;
 using SMBLibrary.Client;
 using SMBLibrary.SMB2;
@@ -154,6 +155,7 @@ public class FileCopyProcessor
 
         if (fileHandle == null)
         {
+            Console.Error.WriteLine($"Could not create file {dest}: file handle is null.");
             return;
         }
 
@@ -176,7 +178,14 @@ public class FileCopyProcessor
                     Array.Resize<byte>(ref buffer, bytesRead);
                 }
 
-                int numberOfBytesWritten = TryWriteFile(dest, ref status, fileHandle, writeOffset, ref success, buffer);
+                (int numberOfBytesWritten, var writeSuccess) = TryWriteFile(dest, fileHandle, writeOffset, buffer);
+
+                if (writeSuccess == false)
+                {
+                    success = false;
+                    break;
+                }
+
                 Debug.WriteLine($"Written {numberOfBytesWritten} bytes to file {dest}");
                 writeOffset += bytesRead;
             }
@@ -185,6 +194,10 @@ public class FileCopyProcessor
             {
                 sw.Stop();
                 Console.WriteLine($"File {dest} successfully transferred ({writeOffset / 1024} Kb - {sw.Elapsed.TotalMilliseconds} ms.)");
+            }
+            else
+            {
+                Console.Error.WriteLine($"Could not write to file {dest} ");
             }
         }
         finally
@@ -202,9 +215,11 @@ public class FileCopyProcessor
         }
     }
 
-    private int TryWriteFile(string dest, ref NTStatus status, object? fileHandle, int writeOffset, ref bool success, byte[] buffer)
+    private (int, bool) TryWriteFile(string dest, object? fileHandle, int writeOffset, byte[] buffer)
     {
         int numberOfBytesWritten = 0;
+        bool success = false;
+        NTStatus? status = null;
 
         for (int retry = 1; retry <= MaxRetries; retry++)
         {
@@ -230,6 +245,6 @@ public class FileCopyProcessor
             Thread.Sleep(1000);
         }
 
-        return numberOfBytesWritten;
+        return (numberOfBytesWritten, success);
     }
 }
