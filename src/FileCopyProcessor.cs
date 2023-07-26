@@ -4,7 +4,8 @@ using SMBLibrary.Client;
 
 public class FileCopyProcessor
 {
-    private const int MaxRetries = 3;
+    private const int MaxWriteFileRetries = 1;
+    private const int MaxCopyFileRetries = 3;
     private readonly SambaConnection _sambaConnection;
 
     public FileCopyProcessor(SambaConnection sambaConnection)
@@ -135,8 +136,6 @@ public class FileCopyProcessor
         }
     }
 
-    private static bool IsCurrentDirectoryPath(string path) => string.IsNullOrEmpty(path) || path == "." || path == "./" || path == @".\";
-
     private void CopyFile(string fileName, string destPath)
     {
         var destFileName = Path.GetFileName(fileName);
@@ -144,8 +143,21 @@ public class FileCopyProcessor
 
         Console.WriteLine($"Creating file {dest}");
 
+        for (int retry = 1; retry <= MaxCopyFileRetries; retry++)
+        {
+            if (CopyFileInternal(fileName, dest) == true)
+            {
+                break;
+            }
+            _sambaConnection.Reconnect();
+        }
+
+    }
+
+    private bool CopyFileInternal(string fileName, string dest)
+    {
         NTStatus status;
-        object? fileHandle = null;
+        object? fileHandle;
 
         try
         {
@@ -154,42 +166,40 @@ public class FileCopyProcessor
             if (status != NTStatus.STATUS_SUCCESS)
             {
                 Console.Error.WriteLine($"Could not create file {dest}: Status={status}");
-                return;
+                return false;
             }
         }
         catch (Exception ex) when (ex.Message == "Not enough credits")
         {
-            _sambaConnection.Reconnect();
-            status = _sambaConnection.FileStore.SambaCreateFile(dest, out fileHandle);
-
-            if (status != NTStatus.STATUS_SUCCESS)
-            {
-                Console.Error.WriteLine($"Could not create file {dest}: Status={status} (second try)");
-                return;
-            }
+            return false;
         }
 
         if (fileHandle == null)
         {
             Console.Error.WriteLine($"Could not create file {dest}: file handle is null.");
-            return;
+            return false;
         }
 
         var sw = Stopwatch.StartNew();
 
         try
         {
-            var (writeOffset, success) = CopyFile(fileName, dest, fileHandle);
+            var (writeOffset, success) = WriteFileInternal(fileName, dest, fileHandle);
 
             if (success)
             {
                 sw.Stop();
-                Console.WriteLine($"File {dest} successfully transferred ({writeOffset / 1024} Kb - {(int)sw.Elapsed.TotalMilliseconds} ms)");
+                Console.WriteLine($"File {dest} successfully transferred ({writeOffset / 1024}Kb - {(int)sw.Elapsed.TotalMilliseconds}ms)");
             }
             else
             {
                 Console.Error.WriteLine($"Could not write to file {dest} ");
+                return false;
             }
+        }
+        catch (Exception ex) when (ex.Message == "Not enough credits")
+        {
+            return false;
         }
         finally
         {
@@ -204,9 +214,11 @@ public class FileCopyProcessor
             }
             catch { }
         }
+
+        return true;
     }
 
-    private (int, bool) CopyFile(string fileName, string dest, object? fileHandle)
+    private (int, bool) WriteFileInternal(string fileName, string dest, object? fileHandle)
     {
         int writeOffset = 0;
         var success = false;
@@ -246,7 +258,7 @@ public class FileCopyProcessor
         bool success = false;
         NTStatus? status = null;
 
-        for (int retry = 1; retry <= MaxRetries; retry++)
+        for (int retry = 1; retry <= MaxWriteFileRetries; retry++)
         {
             try
             {
@@ -266,10 +278,11 @@ public class FileCopyProcessor
                 Console.WriteLine("Exception caught: " + ex.Message);
             }
 
-            Console.Error.WriteLine($"Failed to write to file {dest}: Status={status} (retry {retry} / {MaxRetries})");
-            _sambaConnection.Reconnect();
+            Console.Error.WriteLine($"Failed to write to file {dest}: Status={status} (retry {retry} / {MaxWriteFileRetries})");
         }
 
         return (numberOfBytesWritten, success);
     }
+
+    private static bool IsCurrentDirectoryPath(string path) => string.IsNullOrEmpty(path) || path == "." || path == "./" || path == @".\";
 }

@@ -3,6 +3,7 @@ using SMBLibrary.Client;
 
 public class SambaConnection
 {
+    public const int MaxReconnectRetries = 10;
     private readonly string? _username;
     private readonly string? _password;
 
@@ -24,11 +25,66 @@ public class SambaConnection
     public string Domain { get; }
 
     public bool Reconnect()
+    {        
+        for (int retry = 1; retry <= MaxReconnectRetries;  retry++)
+        {
+            Console.WriteLine($"Reconnecting (retry {retry} / {MaxReconnectRetries} ...");
+            Thread.Sleep(10000);
+
+            try
+            {
+                if (ReconnectInternal() == true)
+                {
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            { 
+                Console.WriteLine($"Exception while reconnecting: {ex.Message}");
+            }
+        }
+
+        return false;
+    }
+
+    public static SambaConnection? Create(string server, string tree, string domain, string? username, string? password)
     {
-        Console.WriteLine("Reconnecting...");
-        Thread.Sleep(10000);
+        var client = new SMB2Client();
 
+        Console.WriteLine($"Connecting to Server={server} Tree={tree}...");
+        var isConnected = client.Connect(server, SMBTransportType.DirectTCPTransport);
 
+        if (!isConnected)
+        {
+            Console.Error.WriteLine($"Could not connect to {server}");
+            return null;
+        }
+
+        Console.WriteLine($"Logging to Domain={domain} with Username={username}");
+        var status = client.Login(domain, username, password);
+
+        if (status != NTStatus.STATUS_SUCCESS)
+        {
+            Console.Error.WriteLine($"Could not login to {server} with credentials: Status={status}");
+            client.Disconnect();
+            return null;
+        }
+
+        var fileStore = client.TreeConnect(tree, out status);
+
+        if (status != NTStatus.STATUS_SUCCESS)
+        {
+            Console.Error.WriteLine($"Could not connect to Server={server} Tree={tree}: Status={status}");
+            client.Logoff();
+            client.Disconnect();
+            return null;
+        }
+
+        return new SambaConnection(client, fileStore, server, tree, domain, username, password);
+    }
+
+    private bool ReconnectInternal()
+    {
         try
         {
             Client.Logoff();
@@ -69,41 +125,5 @@ public class SambaConnection
         FileStore = fileStore;
 
         return true;
-    }
-
-    public static SambaConnection? Create(string server, string tree, string domain, string? username, string? password)
-    {
-        var client = new SMB2Client();
-
-        Console.WriteLine($"Connecting to Server={server} Tree={tree}...");
-        var isConnected = client.Connect(server, SMBTransportType.DirectTCPTransport);
-
-        if (!isConnected)
-        {
-            Console.Error.WriteLine($"Could not connect to {server}");
-            return null;
-        }
-
-        Console.WriteLine($"Logging to Domain={domain} with Username={username}");
-        var status = client.Login(domain, username, password);
-
-        if (status != NTStatus.STATUS_SUCCESS)
-        {
-            Console.Error.WriteLine($"Could not login to {server} with credentials: Status={status}");
-            client.Disconnect();
-            return null;
-        }
-
-        var fileStore = client.TreeConnect(tree, out status);
-
-        if (status != NTStatus.STATUS_SUCCESS)
-        {
-            Console.Error.WriteLine($"Could not connect to Server={server} Tree={tree}: Status={status}");
-            client.Logoff();
-            client.Disconnect();
-            return null;
-        }
-
-        return new SambaConnection(client, fileStore, server, tree, domain, username, password);
     }
 }
