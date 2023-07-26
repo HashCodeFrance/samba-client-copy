@@ -142,9 +142,6 @@ public class FileCopyProcessor
         var destFileName = Path.GetFileName(fileName);
         var dest = IsCurrentDirectoryPath(destPath) == false ? @$"{destPath}\{destFileName}" : destFileName;
 
-        _sambaConnection.Reconnect();
-
-
         Console.WriteLine($"Creating file {dest}");
 
         NTStatus status;
@@ -238,6 +235,7 @@ public class FileCopyProcessor
             writeOffset += bytesRead;
         }
 
+        fs.Close();
         return (writeOffset, success);
     }
 
@@ -261,6 +259,8 @@ public class FileCopyProcessor
                 Console.WriteLine("Exception caught: " + ex.Message);
             }
 
+            Thread.Sleep(2000);
+
             if (status == NTStatus.STATUS_SUCCESS)
             {
                 success = true;
@@ -268,7 +268,6 @@ public class FileCopyProcessor
             }
 
             Console.Error.WriteLine($"Failed to write to file {dest}: Status={status} (retry {retry} / {MaxRetries})");
-            Thread.Sleep(1000);
         }
 
         return (numberOfBytesWritten, success);
