@@ -9,7 +9,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/bin/Debug/net7.0/SambaFileCopy.dll",
+            "program": "${workspaceFolder}/src/bin/Debug/net9.0/SambaFileCopy.dll",
             "args": [],
             "cwd": "${workspaceFolder}/src",
             "console": "internalConsole",
