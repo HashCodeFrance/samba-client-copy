@@ -2,9 +2,9 @@
 
 This simple program allows to copy a folder or a file to a samba share.
 
-It uses .NET 7.0 and the [SMBLibrary](https://github.com/TalAloni/SMBLibrary) portable library.
+It uses .NET 9.0 and the [SMBLibrary](https://github.com/TalAloni/SMBLibrary) portable library.
 
-Tested under Ubuntu 20.04
+Tested under Ubuntu 23.04
 
 ## Build
 
