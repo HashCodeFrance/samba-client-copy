@@ -1,6 +1,8 @@
 using SMBLibrary;
 using SMBLibrary.Client;
 
+namespace SambaFileCopy;
+
 public static class SambaFileStoreExtensions
 {
     public static NTStatus SambaCreateFile(this ISMBFileStore fileStore, string dest, out object? fileHandle, bool skipExistingFiles)
