@@ -1,4 +1,5 @@
 ﻿using CommandLine;
+using SambaFileCopy;
 
 Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
 {
@@ -10,14 +11,21 @@ Parser.Default.ParseArguments<Options>(args).WithParsed(o =>
         return;
     }
 
-    var sambaConnection = SambaConnection.Create(o.Server!, o.Tree!, o.Domain!, o.Username, o.Password, o.SkipExistingFiles);
-
-    if (sambaConnection == null )
+    try
     {
-        // error was logged in console
-        return;
-    }
+        var sambaConnection = SambaConnection.Create(o.Server!, o.Tree!, o.Domain!, o.Username, o.Password, o.SkipExistingFiles);
 
-    var processor = new FileCopyProcessor(sambaConnection);
-    processor.CopyFromFolderToFolder(o.Source!, o.Destination!);
+        if (sambaConnection == null)
+        {
+            // error was logged in console
+            return;
+        }
+
+        var processor = new FileCopyProcessor(sambaConnection);
+        processor.CopyFromFolderToFolder(o.Source!, o.Destination!);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"Unexpected Error: {ex}");
+    }
 });

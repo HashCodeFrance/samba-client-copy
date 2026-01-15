@@ -1,5 +1,7 @@
 using CommandLine;
 
+namespace SambaFileCopy;
+
 public class Options
 {
     [Option('s', "source", Required = true, HelpText = "Source path")]

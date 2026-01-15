@@ -1,34 +1,24 @@
 using SMBLibrary;
 using SMBLibrary.Client;
 
-public class SambaConnection
+namespace SambaFileCopy;
+
+public class SambaConnection(SMB2Client client, ISMBFileStore fileStore, string server, string tree, string domain, string? username, string? password, bool skipExistingFiles)
 {
     public const int MaxReconnectRetries = 10;
-    private readonly string? _username;
-    private readonly string? _password;
+    private readonly string? _username = username;
+    private readonly string? _password = password;
 
-    public SambaConnection(SMB2Client client, ISMBFileStore fileStore, string server, string tree, string domain, string? username, string? password, bool skipExistingFiles)
-    {
-        Client = client;
-        FileStore = fileStore;
-        Server = server;
-        Tree = tree;
-        Domain = domain;
-        _username = username;
-        _password = password;
-        SkipExistingFiles = skipExistingFiles;
-    }
-
-    public ISMBFileStore FileStore { get; private set; }
-    public SMB2Client Client { get; private set; }
-    public string Server { get; }
-    public string Tree { get; }
-    public string Domain { get; }
-    public bool SkipExistingFiles { get; }
+    public ISMBFileStore FileStore { get; private set; } = fileStore;
+    public SMB2Client Client { get; private set; } = client;
+    public string Server { get; } = server;
+    public string Tree { get; } = tree;
+    public string Domain { get; } = domain;
+    public bool SkipExistingFiles { get; } = skipExistingFiles;
 
     public bool Reconnect()
-    {        
-        for (int retry = 1; retry <= MaxReconnectRetries;  retry++)
+    {
+        for (int retry = 1; retry <= MaxReconnectRetries; retry++)
         {
             Console.WriteLine($"Reconnecting (retry {retry} / {MaxReconnectRetries})...");
             Thread.Sleep(20000);
@@ -41,7 +31,7 @@ public class SambaConnection
                 }
             }
             catch (Exception ex)
-            { 
+            {
                 Console.WriteLine($"Exception while reconnecting: {ex.Message}");
             }
         }
@@ -93,7 +83,6 @@ public class SambaConnection
             Client.Disconnect();
         }
         catch { }
-
 
         Client = new SMB2Client();
 

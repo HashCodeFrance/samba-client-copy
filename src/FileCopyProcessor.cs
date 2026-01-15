@@ -2,6 +2,8 @@ using System.Diagnostics;
 using SMBLibrary;
 using SMBLibrary.Client;
 
+namespace SambaFileCopy;
+
 public class FileCopyProcessor
 {
     private const int MaxWriteFileRetries = 1;
@@ -267,7 +269,7 @@ public class FileCopyProcessor
             }
 
             Debug.WriteLine($"Written {numberOfBytesWritten} bytes to file {dest}");
-            writeOffset += bytesRead; 
+            writeOffset += bytesRead;
             success = true;
         }
 
